@@ -4,3 +4,4 @@ plotly
 mlxtend
 matplotlib
 scikit-learn
+seaborn
