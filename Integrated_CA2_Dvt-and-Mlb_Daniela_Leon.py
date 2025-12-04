@@ -19,8 +19,7 @@ plt.style.use("default")
 # In[3]:
 
 
-url = "https://github.com/CCT-Dublin/integrated-ca2-dvt-and-mlb-Daniela2729/blob/main/Online-eCommerce.csv"
-df1 = pd.read_csv(url)
+df1 = pd.read_csv("Online-eCommerce.csv")
 df1.head()
 
 
@@ -406,8 +405,7 @@ warnings.filterwarnings('ignore')
 # In[42]:
 
 
-url2 = "https://github.com/CCT-Dublin/integrated-ca2-dvt-and-mlb-Daniela2729/blob/main/products.csv"
-df2 = pd.read_csv(url2)
+df2 = pd.read_csv("products.csv")
 df2.head()
 
 
