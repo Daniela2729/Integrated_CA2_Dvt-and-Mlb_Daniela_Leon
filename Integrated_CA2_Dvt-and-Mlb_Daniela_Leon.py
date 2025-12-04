@@ -3,10 +3,13 @@
 
 # Integrated CA2 DVT and MLB Daniela Leon
 
-# In[2]:
+# In[152]:
 
 
 import streamlit as st
+
+
+st.title("Integrated-ca2-dvt-and-mlb")
 
 import pandas as pd
 
@@ -673,16 +676,3 @@ print(rules_fp.sort_values(by='lift', ascending=False).head(5)[['antecedents','c
 
 #pip install streamlit pandas plotly mlxtend
 
-import streamlit as st
-import pandas as pd
-
-st.title("Product Analysis")
-
-# Cargar datos directamente desde GitHub
-url = "https://github.com/CCT-Dublin/integrated-ca2-dvt-and-mlb-Daniela2729/blob/main/products.csv"
-df2 = pd.read_excel(url)
-
-df_sample = df2.sample(n=3000, random_state=42)
-
-st.subheader("Raw Data")
-st.write(df_sample)
