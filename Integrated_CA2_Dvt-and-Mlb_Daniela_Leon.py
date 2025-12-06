@@ -11,7 +11,6 @@ from sklearn.metrics.pairwise import cosine_similarity
 import warnings
 warnings.filterwarnings('ignore')
 
-
 st.set_page_config(page_title="Market Basket", layout="wide")
 st.title("Integrated e-Commerce Dashboard")
 st.markdown("This dashboard shows the main business insights in a simple, user-friendly interface.", unsafe_allow_html=True)
@@ -25,7 +24,6 @@ df1['Product'] = df1['Product'].astype(str).str.strip().str.lower()
 df1['Category'] = df1['Category'].astype(str).str.strip().str.lower()
 df1['Brand'] = df1['Brand'].astype(str).str.strip().str.lower()
 df1['Customer_Name'] = df1['Customer_Name'].astype(str).str.strip()
-
 df1 = df1[['Customer_Name', 'Product', 'Category', 'Brand', 'Quantity', 'Total_Sales']].copy()
 df1.dropna(inplace=True)
 
@@ -38,39 +36,41 @@ col3.metric("Categorías", df1['Category'].nunique())
 
 cat_sales = df1.groupby("Category")["Quantity"].sum().reset_index()
 st.subheader("Top Selling Categories (Interactive)")
-fig = px.bar(cat_sales,
+fig = px.bar(
+cat_sales,
 x="Category",
 y="Quantity",
 color="Quantity",
 hover_data=["Quantity"],
 labels={"Quantity":"Cantidad vendida","Category":"Categoría"},
-title="Ventas por Categoría")
+title="Ventas por Categoría"
+)
 st.plotly_chart(fig, use_container_width=True)
 
 
 st.subheader("Sales per Customer (Interactive)")
 customer_sales = df1.groupby('Customer_Name')['Total_Sales'].sum().reset_index()
-fig = px.scatter(customer_sales,
+fig = px.scatter(
+customer_sales,
 x="Customer_Name",
 y="Total_Sales",
 size="Total_Sales",
 color="Total_Sales",
 hover_data=["Total_Sales"],
-title="Ventas Totales por Cliente")
+title="Ventas Totales por Cliente"
+)
 fig.update_layout(xaxis_tickangle=-45)
 st.plotly_chart(fig, use_container_width=True)
 
 
 check_final = df1.pivot_table(index='Customer_Name', columns='Category', values='Quantity')
 check_final = check_final.apply(lambda row: row.fillna(row.mean()), axis=1)
-
-
 similarity_with_user = pd.DataFrame(cosine_similarity(check_final), index=check_final.index, columns=check_final.index)
 
 def find_n_neighbours_user_ids(similarity_with_user, n):
 top_users = similarity_with_user.apply(
 lambda row: pd.Series(
-row.sort_values(ascending=False).iloc[1+1].index,
+row.sort_values(ascending=False).iloc[1:n+1].index,
 index=['top{}'.format(i) for i in range(1, n+1)]
 ),
 axis=1
@@ -104,58 +104,18 @@ return data.sort_values(by='Score', ascending=False).head(top_n)
 st.subheader("Personalized recommendation (User–Item)")
 usuarios = check_final.index.tolist()
 usuario_sel = st.selectbox("Usuario:", usuarios, key="user_select")
+
 if st.button("Generate recommendation"):
 recomendaciones_user_df = User_item_score1(usuario_sel)
 st.success(f"Top 5 categorías recomendadas para {usuario_sel}:")
 for cat in recomendaciones_user_df['Category']:
 st.write(f"- {cat}")
+
+```
 fig = px.bar(
-recomendaciones_user_df,
-x="Category",
-y="Score",
-text="Category",
-color="Score",
-labels={"Score":"Predicted Score","Category":"Category"},
-title=f"Top 5 categorías recomendadas para '{usuario_sel}'",
-color_continuous_scale="Viridis"
-)
-fig.update_traces(textposition='outside')
-st.plotly_chart(fig)
-
-
-st.subheader("Top Products Dashboard")
-df_sample = df2.sample(n=3000, random_state=42)
-df_sample['Products'] = df_sample['Products'].apply(lambda x: [p.strip() for p in x.split(',')] if isinstance(x, str) else [])
-all_products = [p for sublist in df_sample['Products'] for p in sublist if p]
-product_counts = Counter(all_products)
-df_products = pd.DataFrame(product_counts.items(), columns=['Product', 'Count'])
-
-top_n = st.slider("Select the number of products to display:", 5, 20, 10)
-order = st.radio("Sort products by:", ['Count descending', 'Alphabetical'], index=0)
-if order == 'Count descending':
-df_plot = df_products.sort_values(by='Count', ascending=False).head(top_n)
-else:
-df_plot = df_products.sort_values(by='Product').head(top_n)
-
-fig = px.bar(
-df_plot,
-x='Product',
-y='Count',
-text='Count',
-color='Count',
-color_continuous_scale='Viridis',
-title=f"Top {top_n} Best-Selling Products",
-hover_data={'Product': True, 'Count': True}
-)
-fig.update_layout(
-font=dict(size=18),
-title_font_size=24,
-xaxis_tickangle=-45,
-xaxis_title="Product",
-yaxis_title="Quantity Sold",
-plot_bgcolor='white',
-paper_bgcolor='white'
-)
-fig.update_traces(textposition='outside', cliponaxis=False, textfont_size=16)
-st.plotly_chart(fig, use_container_width=True)
-st.markdown("Each bar shows how many times each product was sold. Darker colors indicate higher sales.", unsafe_allow_html=True)
+    recomendaciones_user_df,
+    x="Category",
+    y="Score",
+    text="Category",
+    color="Score
+```
