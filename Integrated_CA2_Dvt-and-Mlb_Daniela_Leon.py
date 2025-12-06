@@ -44,6 +44,31 @@ df1['Customer_Name'] = df1['Customer_Name'].astype(str).str.strip()
 
 # In[13]:
 
+
+user = sorted(check_final.index.tolist())
+
+
+user_sel = st.selectbox("Select a user:", users)
+
+
+if st.button("Show recommendations"):
+
+try:
+recommendations = User_item_score1(user_sel)
+
+st.success(f"Top 5 recommended categories for **{user_sel}**:")
+
+st.write(recommendations)
+
+# Interactive display
+rec_df = pd.DataFrame({"Category": recommendations})
+
+st.dataframe(rec_df)
+
+except Exception as e:
+
+st.error(f"Error generating recommendations: {e}")
+
 st.subheader("Top Selling Categories (Total Amount)")
 
 col1, col2, col3 = st.columns(3)
