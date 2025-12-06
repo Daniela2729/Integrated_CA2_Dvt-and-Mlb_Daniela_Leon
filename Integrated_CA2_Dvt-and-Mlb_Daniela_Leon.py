@@ -253,36 +253,41 @@ st.write("Select a user to view recommended categories.")
 
 # Lista de usuarios
 usuarios = check_final.index.tolist()
-usuario_sel = st.selectbox("Usuario:", usuarios)
+usuario_sel = st.selectbox("Usuario:", usuarios, key="user_select")
 
 if st.button("Generate recommendation"):
     try:
         # Generar recomendaciones
-        recommendations_df = User_item_score_selected(usuario_sel, top_n=5)  # nueva función que devuelve DataFrame
+        recomendaciones_user_df = User_item_score_selected(usuario_sel, top_n=5)  # Devuelve DataFrame con 'Category' y 'Score'
 
-        # Mostrar lista de categorías
-        st.write("Recommended categories:")
-        for cat in recommendations_df['Category']:
-            st.write(f"- {cat}")
+        if recomendaciones_user_df.empty:
+            st.warning("No se pudieron generar recomendaciones para este usuario.")
+        else:
+            st.success(f"Top 5 categorías recomendadas para **{usuario_sel}**:")
 
-        # Crear gráfico interactivo
-        fig = px.bar(
-            recommendations_df,
-            x="Category",
-            y="Score",
-            text="Category",
-            color="Score",
-            labels={"Score": "Predicted Score", "Category": "Category"},
-            title=f"Top 5 recommended categories for '{usuario_sel}'",
-            color_continuous_scale="Viridis"
-        )
-        fig.update_traces(textposition='outside')
-        st.plotly_chart(fig)
+            # Mostrar lista simple
+            for cat in recomendaciones_user_df['Category']:
+                st.write(f"- {cat}")
+
+            # Crear gráfico interactivo
+            fig = px.bar(
+                recomendaciones_user_df,
+                x="Category",
+                y="Score",
+                text="Category",
+                color="Score",
+                labels={"Score": "Predicted Score", "Category": "Category"},
+                title=f"Top 5 categorías recomendadas para '{usuario_sel}'",
+                color_continuous_scale="Viridis"
+            )
+            fig.update_traces(textposition='outside')
+            st.plotly_chart(fig)
 
     except Exception as e:
-        st.error(f"The recommendation could not be generated for this user: {e}")
+        st.error(f"No se pudo generar la recomendación para este usuario: {e}")
 
-# -----------------------------------------
+
+# -------------------------------
 # Función que devuelve recomendaciones como DataFrame
 def User_item_score_selected(user, top_n=5):
     score = []
@@ -309,6 +314,7 @@ def User_item_score_selected(user, top_n=5):
     data = pd.DataFrame({'Category': check_final.columns, 'Score': score})
     top_recommendations = data.sort_values(by='Score', ascending=False).head(top_n)
     return top_recommendations
+
 
 # In[27]:
 
@@ -560,54 +566,44 @@ print(metrics_df)
 st.subheader("Item-Based Recommendation (Item-Item)")
 st.write("Relationship with other items.")
 
-# Lista de categorías disponibles
+
 items = sorted(check_final.columns.tolist())
 item_sel = st.selectbox("Select a category:", items, key="item_select")
 
-def Item_item_score_selected(item_actual, top_n=5):
-    # Tomamos los vecinos de la categoría seleccionada
-    neighbors = sim_items_12_u.loc[item_actual].dropna().values.squeeze().tolist()
-    
-    if len(neighbors) == 0:
-        return []
-    
-    corr = similarity_with_item.loc[item_actual, neighbors]
-    scores = pd.DataFrame({
-        "Category": neighbors,
-        "Score": corr.values
-    })
-    
-    top_items = scores.sort_values(by="Score", ascending=False).head(top_n)
-    return top_items
 
 if st.button("Show similar items"):
     try:
-        recomendaciones_items_df = Item_item_score_selected(item_sel, top_n=5)
-        if recomendaciones_items_df.empty:
-            st.warning("No similar items found for this category.")
-        else:
-            st.success(f"Top 5 categories similar to **{item_sel}**:")
 
-            # Mostrar lista simple
-            for cat in recomendaciones_items_df['Category']:
-                st.write(f"- {cat}")
+        recomendaciones_items = Item_item_score1(top_n=5) 
 
-            # Gráfico interactivo
-            fig = px.bar(
-                recomendaciones_items_df,
-                x="Category",
-                y="Score",
-                text="Category",
-                color="Score",
-                labels={"Score": "Similarity", "Category": "Category"},
-                title=f"Top 5 categories similar to '{item_sel}'",
-                color_continuous_scale="Viridis"
-            )
-            fig.update_traces(textposition='outside')
-            st.plotly_chart(fig)
+        st.success(f"Top 5 categories similar to **{item_sel}**:")
+
+
+        for cat in recomendaciones_items:
+            st.write(f"- {cat}")
+
+
+        rec_items_df = pd.DataFrame({
+            "Category": recomendaciones_items,
+            "Score": range(len(recomendaciones_items), 0, -1)
+        })
+
+        fig = px.bar(
+            rec_items_df,
+            x="Category",
+            y="Score",
+            text="Category",
+            color="Score",
+            labels={"Score": "Similarity", "Category": "Category"},
+            title=f"Top 5 categories similar to '{item_sel}'",
+            color_continuous_scale="Viridis"
+        )
+        fig.update_traces(textposition='outside')
+        st.plotly_chart(fig)
 
     except Exception as e:
-        st.error(f"The item-item recommendation could not be generated: {e}")# Part 2
+        st.error(f"The item-item recommendation could not be generated: {e}")
+# Part 2
 
 # In[168]:
 
