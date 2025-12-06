@@ -183,10 +183,24 @@ selected_item = st.selectbox("Select a Category:", items, key="item_select")
 if st.button("Show Similar Items"):
     item_recommendations = Item_item_score1(top_n=5)
     st.success(f"Top 5 categories similar to **{selected_item}**:")
+
     for cat in item_recommendations:
         st.write(f"- {cat}")
 
+    
+    df_item_recs = pd.DataFrame({'Category': item_recommendations, 'Score': range(5, 0, -1)})
 
+    fig = px.bar(
+        df_item_recs,
+        x="Category",
+        y="Score",
+        color="Score",
+        labels={"Score": "Predicted Score", "Category": "Category"},
+        title=f"Top 5 categories similar to '{selected_item}'",
+        color_continuous_scale="Viridis"
+    )
+    fig.update_traces(textposition='outside')
+    st.plotly_chart(fig)
 
 df2 = pd.read_csv("products.csv")
 df_sample = df2.sample(n=3000, random_state=42)
