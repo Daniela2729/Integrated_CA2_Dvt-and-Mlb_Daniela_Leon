@@ -64,6 +64,20 @@ plt.tight_layout()
 
 st.pyplot(fig1)
 
+st.subheader("Personalized recommendation (User–Item)")
+
+st.write("Select a user to view recommended categories.")
+
+usuarios = check_final.index.tolist()
+usuario_sel = st.selectbox("Usuario:", usuarios)
+
+if st.button("Generate recommendation"):
+    try:
+        recommendations = User_item_score1(usuario_sel)
+        st.write("Recommended categories:")
+        st.write(recommendations)
+    except:
+        st.error("The recommendation could not be generated for this user.")
 
 
 
@@ -233,11 +247,6 @@ def User_item_score1(user):
 
 
 # In[27]:
-
-
-user = input("Enter the user name to whom you want to recommend: ")
-top_recommendations = User_item_score1(user)
-print("Top 5 recommended categories for", user, ":", top_recommendations)
 
 
 # Item-Item
