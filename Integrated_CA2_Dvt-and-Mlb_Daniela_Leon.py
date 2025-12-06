@@ -902,35 +902,51 @@ col3.metric("Unique products", df2['Products'].nunique())
 
 all_products = [p for sublist in df_sample['Products'] for p in sublist if p]
 
-top_products_count = Counter(all_products).most_common(10)
+Count products
 
-df_products = pd.DataFrame(top_products_count, columns=['Product', 'Count'])
+product_counts = Counter(all_products)
+df_products = pd.DataFrame(product_counts.items(), columns=['Product', 'Count'])
+
+
+top_n = st.slider("Select the number of products to display:", 5, 20, 10)
+
+
+order = st.radio("Sort products by:", ['Count descending', 'Alphabetical'], index=0)
+
+
+if order == 'Count descending':
+df_plot = df_products.sort_values(by='Count', ascending=False).head(top_n)
+else:
+df_plot = df_products.sort_values(by='Product').head(top_n)
+
 
 fig = px.bar(
-    df_products,
-    x='Product',
-    y='Count',
-    text='Count',
-    color='Count',
-    color_continuous_scale='Viridis',
-    title="Top 10 Best-Selling Products",
-    hover_data={'Product': True, 'Count': True}
+df_plot,
+x='Product',
+y='Count',
+text='Count',
+color='Count',
+color_continuous_scale='Viridis',
+title=f"Top {top_n} Best-Selling Products",
+hover_data={'Product': True, 'Count': True}
 )
 
+
 fig.update_layout(
-    font=dict(size=18),        # texto de ejes y etiquetas
-    title_font_size=24,
-    xaxis_tickangle=-45,
-    xaxis_title="Product",
-    yaxis_title="Quantity Sold",
-    plot_bgcolor='white',
-    paper_bgcolor='white'
+font=dict(size=18), # axis and label text
+title_font_size=24,
+xaxis_tickangle=-45,
+xaxis_title="Product",
+yaxis_title="Quantity Sold",
+plot_bgcolor='white',
+paper_bgcolor='white'
 )
 fig.update_traces(textposition='outside')
 
 st.plotly_chart(fig, use_container_width=True)
 
+
 st.markdown(
-    "<p style='font-size:18px;'>Each bar indicates the number of times each product was sold. Darker colors indicate more sales.</p>",
-    unsafe_allow_html=True
+"Each bar shows how many times each product was sold. Darker colors indicate higher sales.",
+unsafe_allow_html=True
 )
