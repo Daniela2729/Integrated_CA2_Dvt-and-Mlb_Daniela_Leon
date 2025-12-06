@@ -248,7 +248,10 @@ def User_item_score1(user):
     top_categories = top_5_recommendation['Category'].tolist()
     return top_categories
 
+st.subheader("Personalized recommendation (User–Item)") 
+st.write("Select a user to view recommended categories.") 
 
+usuarios = check_final.index.tolist() usuario_sel = st.selectbox("Usuario:", usuarios)
 
 if st.button("Generate recommendation"):
     try:
