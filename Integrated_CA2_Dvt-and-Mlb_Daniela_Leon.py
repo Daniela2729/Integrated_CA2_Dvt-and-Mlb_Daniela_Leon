@@ -251,44 +251,59 @@ def User_item_score1(user):
 st.subheader("Personalized recommendation (User–Item)")
 st.write("Select a user to view recommended categories.")
 
-# Lista de usuarios
 usuarios = check_final.index.tolist()
 usuario_sel = st.selectbox("Usuario:", usuarios, key="user_select")
 
 if st.button("Generate recommendation"):
     try:
-        # Generar recomendaciones
-        recomendaciones_user_df = User_item_score_selected(usuario_sel, top_n=5)  # Devuelve DataFrame con 'Category' y 'Score'
 
-        if recomendaciones_user_df.empty:
-            st.warning("No se pudieron generar recomendaciones para este usuario.")
-        else:
-            st.success(f"Top 5 categorías recomendadas para **{usuario_sel}**:")
+        score = []
+        for item in check_final.columns:
+            a = sim_user_30_u.loc[usuario_sel].values
+            neighbors = a.squeeze().tolist()
+            item_ratings = check_final.loc[neighbors, item]
+            item_ratings = item_ratings[item_ratings.notnull()]
 
-            # Mostrar lista simple
-            for cat in recomendaciones_user_df['Category']:
-                st.write(f"- {cat}")
+            avg_user = check_final.loc[usuario_sel].mean()
 
-            # Crear gráfico interactivo
-            fig = px.bar(
-                recomendaciones_user_df,
-                x="Category",
-                y="Score",
-                text="Category",
-                color="Score",
-                labels={"Score": "Predicted Score", "Category": "Category"},
-                title=f"Top 5 categorías recomendadas para '{usuario_sel}'",
-                color_continuous_scale="Viridis"
-            )
-            fig.update_traces(textposition='outside')
-            st.plotly_chart(fig)
+            if len(item_ratings) == 0:
+                final_score = avg_user
+            else:
+                index = item_ratings.index.values.squeeze().tolist() if len(item_ratings) > 1 else [item_ratings.index[0]]
+                corr = similarity_with_user.loc[usuario_sel, index]
+                fin = pd.concat([item_ratings, corr], axis=1)
+                fin.columns = ['adg_score','correlation']
+                fin['score'] = fin.apply(lambda x: x['adg_score'] * x['correlation'], axis=1)
+                final_score = avg_user + fin['score'].sum() / fin['correlation'].sum()
+
+            score.append(final_score)
+
+        recomendaciones_user_df = pd.DataFrame({
+            'Category': check_final.columns,
+            'Score': score
+        }).sort_values(by='Score', ascending=False).head(5)
+
+        st.success(f"Top 5 categorías recomendadas para **{usuario_sel}**:")
+        for cat in recomendaciones_user_df['Category']:
+            st.write(f"- {cat}")
+
+        fig = px.bar(
+            recomendaciones_user_df,
+            x="Category",
+            y="Score",
+            text="Category",
+            color="Score",
+            labels={"Score":"Predicted Score","Category":"Category"},
+            title=f"Top 5 categorías recomendadas para '{usuario_sel}'",
+            color_continuous_scale="Viridis"
+        )
+        fig.update_traces(textposition='outside')
+        st.plotly_chart(fig)
 
     except Exception as e:
         st.error(f"No se pudo generar la recomendación para este usuario: {e}")
 
 
-# -------------------------------
-# Función que devuelve recomendaciones como DataFrame
 def User_item_score_selected(user, top_n=5):
     score = []
     for item in check_final.columns:
