@@ -1,22 +1,28 @@
-#!/usr/bin/env python
-# coding: utf-8
-
-# Integrated CA2 DVT and MLB Daniela Leon
-
-# In[152]:
-
-
-import streamlit as st
-
 
 st.title("Integrated-ca2-dvt-and-mlb")
 
+import streamlit as st
 import pandas as pd
-
 import matplotlib.pyplot as plt
 import seaborn as sns
+import numpy as np
+import time
+
+from sklearn.metrics import mean_squared_error, mean_absolute_error
+from sklearn.metrics.pairwise import cosine_similarity
+from mlxtend.preprocessing import TransactionEncoder
+from collections import Counter
+from mlxtend.frequent_patterns import apriori, fpgrowth, association_rules
+
+import warnings
+warnings.filterwarnings('ignore')
 
 plt.style.use("default")
+
+st.title("e-Commerce Dashboard")
+st.write("""This dashboard displays the most important business information clearly and simply.
+
+It's designed so that anyone can easily understand sales, products, and customer behavior.""")
 
 
 # In[3]:
@@ -24,58 +30,6 @@ plt.style.use("default")
 
 df1 = pd.read_csv("Online-eCommerce.csv")
 df1.head()
-
-
-# In[4]:
-
-
-df1.shape 
-
-
-# In[5]:
-
-
-duplicate_rows_df = df1[df1.duplicated()]
-print("number of duplicate rows: ", duplicate_rows_df.shape)
-
-
-# In[6]:
-
-
-df1.describe()
-
-
-# In[7]:
-
-
-df1.info()
-
-
-# In[8]:
-
-
-df1.dtypes
-
-
-# In[9]:
-
-
-df1.dtypes.value_counts()
-
-
-# In[10]:
-
-
-df1.isnull().sum()
-
-
-# In[11]:
-
-
-Missing_df=df1.isnull().sum()
-Missing_df =Missing_df[Missing_df > 0]
-Missing_df
-
 
 # In[12]:
 
@@ -87,6 +41,27 @@ df1['Customer_Name'] = df1['Customer_Name'].astype(str).str.strip()
 
 
 # In[13]:
+
+st.subheader("Top Selling Categories (Total Amount)")
+
+col1, col2, col3 = st.columns(3)
+
+col1.metric("Total de Ventas", f"${df1['Total_Sales'].sum():,.0f}")
+col2.metric("Productos únicos", df1['Product'].nunique())
+col3.metric("Categorías", df1['Category'].nunique())
+
+cat_sales = df1.groupby("Category")["Quantity"].sum().reset_index()
+
+fig1, ax1 = plt.subplots()
+ax1.bar(cat_sales["Category"], cat_sales["Quantity"])
+plt.xticks(rotation=45)
+plt.xlabel("Categoría")
+plt.ylabel("Cantidad Vendida")
+plt.tight_layout()
+
+st.pyplot(fig1)
+
+
 
 
 df1 = df1[['Customer_Name', 'Product', 'Category', 'Brand', 'Quantity', 'Total_Sales']].copy()
@@ -109,92 +84,177 @@ df1['Brand'] = df1['Brand'].astype(str)
 Check = df1.pivot_table( index='Customer_Name',
                         columns='Category',
                         values='Quantity',
-                        aggfunc='sum',
-                        fill_value=0)
+                        )
 
-Check
+Check.head()
 
 
 # In[16]:
 
 
-from sklearn.metrics.pairwise import cosine_similarity
-import pandas as pd
-
-user= cosine_similarity(Check)
-similarity_with_user= pd.DataFrame(user,
-                                  index=Check.index,
-                                  columns=Check.index)
-
-similarity_with_user.head()
+check_final = Check.fillna(Check.mean(axis=0))
+check_final = Check.apply(lambda row: row.fillna(row.mean()), axis=1)
+check_final.head()
 
 
 # In[17]:
 
 
-def find_n_neighbours_user(similarity_with_user, n):
+user= cosine_similarity(check_final)
+similarity_with_user= pd.DataFrame(user,
+                                  index=check_final.index,
+                                  columns=check_final.index)
 
-    top_users = similarity_with_user.apply(
-        lambda row: pd.Series(
-            row.sort_values(ascending=False).iloc[1:n+1].index,
-            index=[f'top_user_{i}' for i in range(1, n+1)]),
-        axis=1)
-
-    return top_users
+similarity_with_user.head()
 
 
 # In[18]:
 
 
-top_n = 30
-sim_user_30_u = find_n_neighbours_user(similarity_with_user, top_n)
-sim_user_30_u.head()
+def find_n_neighbours_user_ids(similarity_with_user, n):
+    top_users = similarity_with_user.apply(
+        lambda row: pd.Series(
+            row.sort_values(ascending=False).iloc[1:n+1].index,
+            index=['top{}'.format(i) for i in range(1, n+1)]
+        ),
+        axis=1
+    )
+    return top_users
 
 
 # In[19]:
 
 
-def get_common_products(user1, user2):
-    common_products_df = Check.loc[[user1, user2]].T
-    
-    common_products_df = common_products_df[(common_products_df[user1] > 0) & (common_products_df[user2] > 0)]
-    
-    return common_products_df.index.tolist()
+top_n = 30
+sim_user_30_u = find_n_neighbours_user_ids(similarity_with_user, top_n)
+sim_user_30_u.head()
 
 
 # In[20]:
 
 
-user1 = 'Ajay Sharma'
+def get_user_common_items(user1, user2):
+    common_items = df1[df1['Customer_Name'] == user1].merge(
+        df1[df1['Customer_Name'] == user2],
+        on="Category",
+        how="inner"
+    )
 
-top_neighbor = sim_user_30_u.loc[user1, 'top_user_1']
-
-common_products = get_common_products(user1, top_neighbor)
-
-print(f"User: {user1}")
-print(f"Nearest neighbor: {top_neighbor}")
-print(f"Common products bought by both: {common_products}")
+    return common_items
 
 
-# Item-Item
+# In[21]:
+
+
+a = get_user_common_items("Adhir Samal", "Ajay Mehta")
+
+a = a.loc[:, ['Quantity_x', 'Quantity_y', 'Category']]
+
+a.head()
+
 
 # In[22]:
 
 
-item= cosine_similarity(Check.T)
-item_similarity= pd.DataFrame(item,
-                                  index=Check.columns,
-                                  columns=Check.columns)
-
-item_similarity.head()
+def User_item_score(user, item):
+  
+    a = sim_user_30_u[sim_user_30_u.index == user].values
+    b = a.squeeze().tolist()
+    c = check_final.loc[:, item]
+    d = c[c.index.isin(b)]
+    f = d[d.notnull()]
+    
+    avg_user = check_final.loc[user].mean()
+    index = f.index.values.squeeze().tolist()
+    corr = similarity_with_user.loc[user, index]
+    fin = pd.concat([f, corr], axis=1)
+    fin.columns = ['adg_score', 'correlation']
+    fin['score'] = fin.apply(lambda x: x['adg_score'] * x['correlation'], axis=1)
+    nume = fin['score'].sum()
+    deno = fin['correlation'].sum()
+    final_score = avg_user + (nume / deno)
+    
+    return final_score
 
 
 # In[23]:
 
 
-def find_n_neighbours_item(item_similarity, n):
+score = User_item_score("Adhir Samal", "cpu")
+print("score (u,i) is", score)
 
-    top_items = item_similarity.apply(
+
+# In[24]:
+
+
+check_final_str = check_final.astype(str)
+
+
+# In[25]:
+
+
+Customer_items = check_final_str.apply(lambda row: ','.join(row[row.notnull()].index), axis=1)
+Customer_items.head()
+
+
+# In[26]:
+
+
+def User_item_score1(user):
+    score = []
+    for item in check_final.columns:
+        
+        a = sim_user_30_u.loc[user].values
+        neighbors = a.squeeze().tolist()
+        item_ratings = check_final.loc[neighbors, item]
+        item_ratings = item_ratings[item_ratings.notnull()]
+
+        avg_user = check_final.loc[user].mean()
+
+        if len(item_ratings) == 0:
+            final_score = avg_user
+        else:
+            index = item_ratings.index.values.squeeze().tolist() if len(item_ratings) > 1 else [item_ratings.index[0]]
+            corr = similarity_with_user.loc[user, index]
+            fin = pd.concat([item_ratings, corr], axis=1)
+            fin.columns = ['adg_score','correlation']
+            fin['score'] = fin.apply(lambda x: x['adg_score'] * x['correlation'], axis=1)
+            final_score = avg_user + fin['score'].sum() / fin['correlation'].sum()
+
+        score.append(final_score)
+
+    data = pd.DataFrame({'Category': check_final.columns, 'score': score})
+    top_5_recommendation = data.sort_values(by='score', ascending=False).head(5)
+    top_categories = top_5_recommendation['Category'].tolist()
+    return top_categories
+
+
+# In[27]:
+
+
+user = input("Enter the user name to whom you want to recommend: ")
+top_recommendations = User_item_score1(user)
+print("Top 5 recommended categories for", user, ":", top_recommendations)
+
+
+# Item-Item
+
+# In[29]:
+
+
+item_sim = cosine_similarity(check_final.T) 
+similarity_with_item = pd.DataFrame(item_sim,
+                                   index=check_final.columns,
+                                   columns=check_final.columns)
+similarity_with_item.head()
+
+
+# In[30]:
+
+
+def find_n_neighbours_item(similarity_with_item, n):
+
+    top_items = similarity_with_item.apply(
         lambda row: pd.Series(
             row.sort_values(ascending=False).iloc[1:n+1].index,
             index=[f'top_item_{i}' for i in range(1, n+1)]
@@ -204,167 +264,204 @@ def find_n_neighbours_item(item_similarity, n):
     
     return top_items
 
-top_n_items = 10
-sim_item_10 = find_n_neighbours_item(item_similarity, top_n_items)
-
-sim_item_10.head()
-
-
-# In[24]:
-
-
-def get_users_who_bought(product):
-    return Check[Check[product] > 0].index.tolist()
-
-
-# In[25]:
-
-
-product_example = "cpu"   
-
-similar_items = sim_item_10.loc[product_example]
-
-print(f"Producto base: {product_example}")
-print("Most similar products (item-item):")
-print(similar_items.tolist())
-
-
-# User–User Collaborative Filtering Recommendation
-
-# In[27]:
-
-
-def predict_user_product_score(user, product, Check, similarity_with_user, top_n=30):
-    similar_users = similarity_with_user.loc[user].sort_values(ascending=False)[1:top_n+1]
-    product_vector = Check.loc[similar_users.index, product]
-    product_vector = product_vector[product_vector > 0]
-    if product_vector.empty:
-        return 0
-    correlation = similar_users[product_vector.index]
-    score = (product_vector * correlation).sum() / correlation.sum()
-    return score
-
-
-# In[28]:
-
-
-def recommend_products_user_user(user, Check, similarity_with_user, top_n_neighbors=30, n_recommendations=5):
-    bought_products = Check.loc[user][Check.loc[user] > 0].index.tolist()
-    candidate_products = [p for p in Check.columns if p not in bought_products]
-    scores = {p: predict_user_product_score(user, p, Check, similarity_with_user, top_n_neighbors) 
-              for p in candidate_products}
-    recommended = sorted(scores.items(), key=lambda x: x[1], reverse=True)
-    return [p for p, s in recommended[:n_recommendations]]
-
-
-# In[29]:
-
-
-recommendations_user = recommend_products_user_user("Ajay Sharma", Check, similarity_with_user)
-print("User-User Recomendaciones:", recommendations_user)
-
-
-# Item–Item Collaborative Filtering Recommendation
 
 # In[31]:
 
 
-def recommend_products_item_item(user, item_similarity, Check, top_n_items=10, n_recommendations=5):
-    bought_products = Check.loc[user][Check.loc[user] > 0].index.tolist()
-    candidate_products = [p for p in Check.columns if p not in bought_products]
-    scores = {}
-    for product in candidate_products:
-        similar_products = item_similarity.loc[product].sort_values(ascending=False)[1:top_n_items+1]
-        bought_scores = Check.loc[user, similar_products.index]
-        scores[product] = (bought_scores * similar_products).sum() / similar_products.sum()
-    recommended = sorted(scores.items(), key=lambda x: x[1], reverse=True)
-    return [p for p, s in recommended[:n_recommendations]]
+top_n_items = 12
+sim_items_12_u = find_n_neighbours_item(similarity_with_item, top_n_items)
+sim_items_12_u
 
 
 # In[32]:
 
 
-recommendations_item = recommend_products_item_item("Ajay Sharma", item_similarity, Check)
-print("Item-Item Recomendaciones:", recommendations_item)
+def Item_item_score(user, item):
+    a = sim_items_12_u[sim_items_12_u.index == item].values
+    b = a.squeeze().tolist()  
+    c = check_final.loc[user, b] 
+    f = c[c.notnull()]  
+    
+    avg_user = check_final.loc[user].mean()  
+    index = f.index.values.squeeze().tolist() if len(f) > 1 else [f.index[0]]
+    corr = similarity_with_item.loc[item, index]
+    fin = pd.concat([f, corr], axis=1)
+    fin.columns = ['adg_score', 'correlation']
+    fin['score'] = fin.apply(lambda x: x['adg_score'] * x['correlation'], axis=1)
+    final_score = avg_user + (fin['score'].sum() / fin['correlation'].sum())
+    
+    return final_score
 
 
 # In[33]:
 
 
-plt.figure(figsize=(12,8))
-sns.heatmap(similarity_with_user, cmap='viridis')
-plt.title("User-User Similarity Heatmap")
-plt.show()
-
-plt.figure(figsize=(12,8))
-sns.heatmap(item_similarity, cmap='magma')
-plt.title("Item-Item Similarity Heatmap")
-plt.show()
+score_item = Item_item_score("Adhir Samal", "cpu")
+print("score (item-item) for user 'Adhir Samal' and item 'cpu' is", score_item)
 
 
 # In[34]:
 
 
-#all_products = [p for sublist in df1['Category'] for p in sublist]
-#product_counts = Counter(all_products)
-
-#product_counts_series = pd.Series(product_counts)
-
-#print("Number of products:", product_counts_series.shape[0])
-#print("Median counts per product:", product_counts_series.median())
-
-#plt.figure(figsize=(6,4))
-#plt.hist(product_counts_series, bins=50, color='skyblue', edgecolor='black')
-#plt.xlabel("Number of occurrences per product")
-#plt.ylabel("Number of products")
-#plt.title("Distribution of Product Occurrences (log scale)")
-#plt.yscale('log')
-#plt.show()
+Item_neighbors_str = sim_items_12_u.apply(lambda row: ','.join(row[row.notnull()].astype(str)), axis=1)
+Item_neighbors_str.head()
 
 
 # In[35]:
 
 
-import numpy as np
+def Item_item_score1(top_n=5):
+    score = []
+    
+    for item_actual in check_final.columns:
+        neighbors = sim_items_12_u.loc[item_actual].dropna().values.squeeze().tolist()
+        
+        if len(neighbors) == 0:
+            final_score = 0
+        else:
+            corr = similarity_with_item.loc[item_actual, neighbors]
+            adg_score = pd.Series(1, index=neighbors)
+            fin = pd.concat([adg_score, corr], axis=1)
+            fin.columns = ['adg_score','correlation']
+            fin['score'] = fin['adg_score'] * fin['correlation']
+            final_score = fin['score'].sum() / fin['correlation'].sum()
 
-user_vals = similarity_with_user.values[np.triu_indices_from(similarity_with_user.values, k=1)]
-item_vals = item_similarity.values[np.triu_indices_from(item_similarity.values, k=1)]
-
-plt.hist(user_vals, bins=25, edgecolor='black')
-plt.title("Distribución User-User Cosine Similarity")
-plt.show()
-
-plt.hist(item_vals, bins=25, edgecolor='black', color='orange')
-plt.title("Distribución Item-Item Cosine Similarity")
-plt.show()
+        score.append(final_score)
+    
+    data = pd.DataFrame({'Category': check_final.columns, 'score': score}) 
+    top_items = data.sort_values(by='score', ascending=False).head(top_n)
+    
+    return top_items['Category'].tolist()
 
 
 # In[36]:
 
 
-def precision_at_k(recommended, relevant):
-    recommended_set = set(recommended)
-    relevant_set = set(relevant)
-    return len(recommended_set & relevant_set) / len(recommended_set) if recommended_set else 0
+top_recommendations_items = Item_item_score1(top_n=5)
+print("Top 5 recommended items (item-item):", top_recommendations_items)
 
 
-# In[37]:
-
-
-def recall_at_k(recommended, relevant):
-    recommended_set = set(recommended)
-    relevant_set = set(relevant)
-    return len(recommended_set & relevant_set) / len(relevant_set) if relevant_set else 0
-
+# Model evaluation
 
 # In[38]:
 
 
-user_test = "Ajay Sharma"
-actual_products = Check.loc[user_test][Check.loc[user_test] > 0].index.tolist()
+from sklearn.model_selection import train_test_split
 
-recommended_user = recommend_products_user_user(user_test, Check, similarity_with_user)
-recommended_item = recommend_products_item_item(user_test, item_similarity, Check)
+train_df, test_df = train_test_split(df1, test_size=0.2, random_state=42)
+
+train_matrix = train_df.pivot_table(index='Customer_Name', columns='Category', values='Quantity')
+test_matrix = test_df.pivot_table(index='Customer_Name', columns='Category', values='Quantity')
+
+
+# RMSE/MAE
+
+# In[40]:
+
+
+pred_matrix_user = check_final.copy()
+
+for user in check_final.index:
+    neighbors = sim_user_30_u.loc[user].values.squeeze().tolist()
+    
+    for item in check_final.columns:
+        neighbor_ratings = check_final.loc[neighbors, item].dropna()
+        
+        if len(neighbor_ratings) > 0:
+            corr = similarity_with_user.loc[user, neighbor_ratings.index]
+            pred_matrix_user.loc[user, item] = np.sum(neighbor_ratings * corr) / np.sum(corr)
+        else:
+            pred_matrix_user.loc[user, item] = check_final.loc[user].mean()
+
+
+# In[41]:
+
+
+true_values = []
+pred_values = []
+
+for user in test_matrix.index:
+    if user in pred_matrix_user.index:
+        for item in test_matrix.columns:
+            if not np.isnan(test_matrix.loc[user, item]):
+                true_values.append(test_matrix.loc[user, item])
+                pred_values.append(pred_matrix_user.loc[user, item])
+
+rmse_user = np.sqrt(mean_squared_error(true_values, pred_values))
+mae_user = mean_absolute_error(true_values, pred_values)
+
+print("User-User RMSE:", rmse_user)
+print("User-User MAE:", mae_user)
+
+
+# In[42]:
+
+
+pred_matrix_item = check_final.copy()
+
+for user in check_final.index:
+    for item in check_final.columns:
+        neighbors = sim_items_12_u.loc[item].dropna().values.squeeze().tolist()
+        neighbor_ratings = check_final.loc[user, neighbors].dropna()
+        if len(neighbor_ratings) > 0:
+            corr = similarity_with_item.loc[item, neighbor_ratings.index]
+            pred_matrix_item.loc[user, item] = (neighbor_ratings * corr).sum() / corr.sum()
+        else:
+            pred_matrix_item.loc[user, item] = check_final.loc[user].mean()
+
+
+# In[43]:
+
+
+true_values = []
+pred_values = []
+
+for user in test_matrix.index:
+    if user in pred_matrix_item.index:
+        for item in test_matrix.columns:
+            if not np.isnan(test_matrix.loc[user, item]):
+                true_values.append(test_matrix.loc[user, item])
+                pred_values.append(pred_matrix_item.loc[user, item])
+
+rmse_item = np.sqrt(mean_squared_error(true_values, pred_values))
+mae_item = mean_absolute_error(true_values, pred_values)
+
+print("RMSE:", rmse_item)
+print("MAE:", mae_item)
+
+
+# In[44]:
+
+
+rmse_df = pd.DataFrame({'RMSE': [rmse_user, rmse_item]}, index=['User-User CF', 'Item-Item CF'])
+rmse_df
+
+
+# In[163]:
+
+
+def precision_at_k(recommended, actual, k=5):
+    recommended_k = recommended[:k]
+    relevant = set(actual)
+    recommended_set = set(recommended_k)
+    return len(recommended_set & relevant) / len(recommended_set) if recommended_set else 0
+
+def recall_at_k(recommended, actual, k=5):
+    recommended_k = recommended[:k]
+    relevant = set(actual)
+    recommended_set = set(recommended_k)
+    return len(recommended_set & relevant) / len(relevant) if relevant else 0
+
+
+
+# In[170]:
+
+
+user_test = "Ajay Sharma"
+actual_products = check_final.loc[user_test][check_final.loc[user_test] > 0].index.tolist()
+
+recommended_user = User_item_score1(user_test)
+recommended_item = Item_item_score1(top_n=5)
 
 metrics = {
     "User-User Precision@K": precision_at_k(recommended_user, actual_products),
@@ -372,72 +469,45 @@ metrics = {
     "Item-Item Precision@K": precision_at_k(recommended_item, actual_products),
     "Item-Item Recall@K": recall_at_k(recommended_item, actual_products)
 }
-
-print(metrics)
-
-
-# In[ ]:
-
-
-
+metrics_df = pd.DataFrame(metrics, index=[0])
+print(metrics_df)
 
 
 # Part 2
 
-# In[40]:
-
-
-import pandas as pd
-from mlxtend.preprocessing import TransactionEncoder
-from collections import Counter
-from mlxtend.frequent_patterns import apriori, fpgrowth, association_rules
-
-
-import time
-
-import warnings
-warnings.filterwarnings('ignore')
-
-
-# In[41]:
-
-
-#pip install mlxtend
-
-
-# In[42]:
+# In[168]:
 
 
 df2 = pd.read_csv("products.csv")
 df2.head()
 
 
-# In[43]:
+# In[48]:
 
 
 df2.shape 
 
 
-# In[44]:
+# In[49]:
 
 
 duplicate_rows_df = df2[df2.duplicated()]
 print("number of duplicate rows: ", duplicate_rows_df.shape)
 
 
-# In[45]:
+# In[50]:
 
 
 df2.describe()
 
 
-# In[46]:
+# In[51]:
 
 
 df2.info()
 
 
-# In[47]:
+# In[52]:
 
 
 df2.dtypes
@@ -445,19 +515,19 @@ df2.dtypes
 
 # Data clean
 
-# In[49]:
+# In[54]:
 
 
 df2.dtypes.value_counts()
 
 
-# In[50]:
+# In[55]:
 
 
 df2.isnull().sum()
 
 
-# In[51]:
+# In[56]:
 
 
 Missing_df=df2.isnull().sum()
@@ -475,20 +545,20 @@ Missing_df
 # 
 # • CustomerID 
 
-# In[54]:
+# In[59]:
 
 
 df_ana=df2.drop(columns=["Timestamp"])
 df_ana.head()
 
 
-# In[55]:
+# In[60]:
 
 
 df_ana.dtypes
 
 
-# In[56]:
+# In[61]:
 
 
 df_ana['TransactionID'] = df_ana['TransactionID'].astype(str)
@@ -498,41 +568,41 @@ df_ana['Products'] = df_ana['Products'].astype(str)
 #df_ana['Products_List'] = df_ana['Products'].apply(lambda x: [p.strip() for p in x.split(',')])
 
 
-# In[57]:
+# In[62]:
 
 
 df_ana.dtypes
 
 
-# In[58]:
+# In[63]:
 
 
 df_ana.head()
 
 
-# In[59]:
+# In[64]:
 
 
 df_sample = df_ana.sample(n=3000, random_state=42)
 
 
-# In[60]:
+# In[65]:
 
 
 df_sample
 
 
-# In[61]:
+# In[66]:
 
 
 df_sample['Products'] = df_sample['Products'].apply(
-    lambda lst: [p.strip() for p in lst if isinstance(p, str) and p.strip() not in ['', ',', ';']])
+    lambda x: [p.strip() for p in x.split(',')] if isinstance(x, str) else [])
 
 
-# In[62]:
+# In[67]:
 
 
-all_products = [p for sublist in df_ana['Products'] for p in sublist]
+all_products = [p for sublist in df_sample['Products'] for p in sublist]
 top_products = [p for p, _ in Counter(all_products).most_common(10)]
 
 df_sample['Products'] = df_sample['Products'].apply(
@@ -541,7 +611,7 @@ df_sample['Products'] = df_sample['Products'].apply(
 
 # Apriori Algorithm
 
-# In[64]:
+# In[69]:
 
 
 basket = df_sample['Products'].tolist()
@@ -549,130 +619,128 @@ basket = df_sample['Products'].tolist()
 te = TransactionEncoder()
 te_array = te.fit(basket).transform(basket)
 df_both = pd.DataFrame(te_array, columns = te.columns_)
-
-
-# In[65]:
-
-
-#basket = df_sample['Products'].tolist()
-
-#te = TransactionEncoder()
-#te_array = te.fit(basket).transform(basket, sparse=True)
-#df_both = pd.DataFrame.sparse.from_spmatrix(te_array, columns=te.columns_)
-
-
-# In[66]:
-
-
-#df_apriori = df_both.astype(bool)
-
-
-# In[67]:
-
-
-frequent_itemsets_ap = apriori(df_both, min_support=0.01, use_colnames=True)
-
-
-# In[68]:
-
-
-print(frequent_itemsets_ap)
-
-
-# In[69]:
-
-
-frequent_itemsets_ap.shape
+df_both
 
 
 # In[70]:
 
 
-rules_ap = association_rules(frequent_itemsets_ap, metric="confidence", min_threshold=0.1)
-rules_ap
+frequent_itemsets_ap = apriori(df_both, min_support=0.01, use_colnames=True)
 
 
-# FP Growth Algorithm
+# In[71]:
+
+
+print(frequent_itemsets_ap)
+
 
 # In[72]:
 
 
-basket = df_sample['Products'].tolist()
-
-te = TransactionEncoder()
-te_array = te.fit(basket).transform(basket)
-df_both = pd.DataFrame(te_array, columns = te.columns_)
+frequent_itemsets_ap.shape
 
 
 # In[73]:
 
 
-#basket = df_sample['Products'].tolist()
-
-#te = TransactionEncoder()
-#te_array = te.fit(basket).transform(basket, sparse=True)
-#df_both = pd.DataFrame.sparse.from_spmatrix(te_array, columns=te.columns_)
+rules= association_rules(frequent_itemsets_ap, metric="confidence", min_threshold=0.1)
 
 
 # In[74]:
+
+
+rules = association_rules(frequent_itemsets_ap, metric="lift", min_threshold=0.1)
+
+
+# In[75]:
+
+
+rules[['lift', 'confidence']].describe()
+
+
+# In[76]:
+
+
+filtered_rules = rules[
+    (rules['lift'] >= 1.2) &
+    (rules['confidence'] >= 0.25)]
+filtered_rules
+
+
+# FP Growth Algorithm
+
+# In[78]:
 
 
 frequent_itemsets_fp = fpgrowth(df_both, min_support = 0.01, use_colnames = True)
 print(frequent_itemsets_fp)
 
 
-# In[75]:
-
-
-rules_fp = association_rules(frequent_itemsets_fp, metric = "confidence", min_threshold = 0.8)
-
-print(rules_fp)
-
-
-# In[76]:
-
-
-start = time.time()
-frequent_itemsets_ap = apriori(df_both, min_support=0.01, use_colnames=True)
-print("Apriori:", time.time() - start)
-
-start = time.time()
-frequent_itemsets_fp = fpgrowth(df_both, min_support=0.01, use_colnames=True)
-print("FP-Growth:", time.time() - start)
-
-
-# In[77]:
-
-
-print("=== Apriori ===")
-print(f"Número de itemsets frecuentes: {len(frequent_itemsets_ap)}")
-print(f"Número de reglas generadas: {len(rules_ap)}")
-print(f"Tiempo de ejecución: {start:.4f} s\n")
-
-print("=== FP-Growth ===")
-print(f"Número de itemsets frecuentes: {len(frequent_itemsets_fp)}")
-print(f"Número de reglas generadas: {len(rules_fp)}")
-print(f"Tiempo de ejecución: {start:.4f} s\n")
-
-
-# In[78]:
-
-
-print("\nTop 5 reglas Apriori por lift:")
-print(rules_ap.sort_values(by='lift', ascending=False).head(5)[['antecedents','consequents','support','confidence','lift']])
-
-print("\nTop 5 reglas FP-Growth por lift:")
-print(rules_fp.sort_values(by='lift', ascending=False).head(5)[['antecedents','consequents','support','confidence','lift']])
-
-
 # In[79]:
 
 
-#pip install voila
+rules_fp = association_rules(frequent_itemsets_fp, metric = "confidence", min_threshold = 0.1)
 
 
 # In[80]:
 
 
-#pip install streamlit pandas plotly mlxtend
+rules_fp = association_rules(frequent_itemsets_fp, metric = "lift", min_threshold = 0.1)
+
+
+# In[81]:
+
+
+rules[['lift', 'confidence']].describe()
+
+
+# In[82]:
+
+
+filtered_rules = rules[
+    (rules['lift'] >= 1.2) &
+    (rules['confidence'] >= 0.25)]
+filtered_rules
+
+
+# In[83]:
+
+
+start = time.time()
+frequent_itemsets_ap = apriori(df_both, min_support=0.01, use_colnames=True)
+apriori_time = time.time() - start
+
+start = time.time()
+frequent_itemsets_fp = fpgrowth(df_both, min_support=0.01, use_colnames=True)
+fpgrowth_time = time.time() - start
+
+
+# In[84]:
+
+
+print("=== Apriori ===")
+print(f"Number of frequent itemsets: {len(frequent_itemsets_ap)}")
+print(f"Number of rules generated: {len(rules)}")
+print(f"Execution time: {apriori_time:.4f} s\n")
+
+print("=== FP-Growth ===")
+print(f"Number of frequent itemsets: {len(frequent_itemsets_fp)}")
+print(f"Number of rules generated: {len(rules_fp)}")
+print(f"Execution time: {fpgrowth_time:.4f} s\n")
+
+
+# In[85]:
+
+
+print("\nTop 5 rules Apriori by lift:")
+print(rules.sort_values(by='lift', ascending=False).head(5)[['antecedents','consequents','support','confidence','lift']])
+
+print("\nTop 5 rules FP-Growth by lift:")
+print(rules_fp.sort_values(by='lift', ascending=False).head(5)[['antecedents','consequents','support','confidence','lift']])
+
+
+# In[ ]:
+
+
+
 

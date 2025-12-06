@@ -5,3 +5,5 @@ mlxtend
 matplotlib
 scikit-learn
 seaborn
+numpy
+time
