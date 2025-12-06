@@ -900,23 +900,20 @@ col2.metric("Unique clients", df2['CustomerID'].nunique())
 col3.metric("Unique products", df2['Products'].nunique())
 
 
-product_counts = pd.Series([p for sublist in df2['Products'] for p in sublist]).value_counts().head(10)
 df_products = product_counts.reset_index()
-df_products.columns = ['Producto', 'Cantidad']
+df_products.columns = ['Product', 'Count']  
 
-# Gráfico interactivo seguro
 fig = px.bar(
     df_products,
     x='Product',
-    y='Amount',
-    text='Amount',
-    color='Amount',
+    y='Count',
+    text='Count',
+    color='Count',
     color_continuous_scale='Viridis',
-    title="Top 10 Best Selling Products",
-    hover_data={'Producto': True, 'Cantidad': True}
+    title="Top 10 Best-Selling Products",
+    hover_data={'Product': True, 'Count': True}
 )
 
-# Mejoras de legibilidad para mayores
 fig.update_layout(
     font=dict(size=18),
     title_font_size=24,
@@ -929,5 +926,8 @@ fig.update_layout(
 fig.update_traces(textposition='outside')
 
 st.plotly_chart(fig, use_container_width=True)
-st.markdown("<p style='font-size:18px;'>Hover your mouse over each bar to see details. The colors indicate the quantity sold.</p>", unsafe_allow_html=True)
 
+st.markdown(
+    "<p style='font-size:18px;'>Hover over each bar to see the quantity sold. Colors indicate quantity.</p>",
+    unsafe_allow_html=True
+)
