@@ -934,7 +934,13 @@ fig.update_layout(
     plot_bgcolor='white',
     paper_bgcolor='white'
 )
-fig.update_traces(textposition='outside')
+
+
+fig.update_traces(
+    textposition='outside',
+    cliponaxis=False,  
+    textfont_size=16
+)
 
 st.plotly_chart(fig, use_container_width=True)
 
