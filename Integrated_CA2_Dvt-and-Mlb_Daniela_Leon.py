@@ -900,9 +900,8 @@ col2.metric("Unique clients", df2['CustomerID'].nunique())
 col3.metric("Unique products", df2['Products'].nunique())
 
 
-df2['Products'] = df2['Products'].apply(lambda x: [p.strip() for p in x] if isinstance(x, list) else [])
+all_products = [p for sublist in df_sample['Products'] for p in sublist if p]
 
-all_products = [p for sublist in df2['Products'] for p in sublist if p]  # Remove empty strings
 top_products_count = Counter(all_products).most_common(10)
 
 df_products = pd.DataFrame(top_products_count, columns=['Product', 'Count'])
@@ -919,7 +918,7 @@ fig = px.bar(
 )
 
 fig.update_layout(
-    font=dict(size=18),
+    font=dict(size=18),        # texto de ejes y etiquetas
     title_font_size=24,
     xaxis_tickangle=-45,
     xaxis_title="Product",
@@ -932,6 +931,6 @@ fig.update_traces(textposition='outside')
 st.plotly_chart(fig, use_container_width=True)
 
 st.markdown(
-    "<p style='font-size:18px;'>Hover over each bar to see the quantity sold. Colors indicate quantity.</p>",
+    "<p style='font-size:18px;'>Each bar indicates the number of times each product was sold. Darker colors indicate more sales.</p>",
     unsafe_allow_html=True
 )
