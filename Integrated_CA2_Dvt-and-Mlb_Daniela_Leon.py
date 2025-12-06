@@ -3,73 +3,85 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
-import time
 import plotly.express as px
-from sklearn.metrics import mean_squared_error, mean_absolute_error
 from sklearn.metrics.pairwise import cosine_similarity
-from mlxtend.preprocessing import TransactionEncoder
 from collections import Counter
-from mlxtend.frequent_patterns import apriori, fpgrowth, association_rules
 import warnings
 
 warnings.filterwarnings('ignore')
 plt.style.use("default")
 
 st.title("Integrated-ca2-dvt-and-mlb")
-st.title("e-Commerce Dashboard")
-st.write("""This dashboard displays the most important business information clearly and simply. It's designed so that anyone can easily understand sales, products, and customer behavior.""")
+st.title("E-Commerce Dashboard")
+st.write(
+"""This dashboard displays the most important business information clearly and simply.
+It is designed so that anyone can easily understand sales, products, and customer behavior."""
+)
 
+# Load data
 
 df1 = pd.read_csv("Online-eCommerce.csv")
 
-# df1.head() 
-
+# Data cleaning
 
 df1['Product'] = df1['Product'].astype(str).str.strip().str.lower()
 df1['Category'] = df1['Category'].astype(str).str.strip().str.lower()
 df1['Brand'] = df1['Brand'].astype(str).str.strip().str.lower()
 df1['Customer_Name'] = df1['Customer_Name'].astype(str).str.strip()
 
+# KPI metrics
 
 col1, col2, col3 = st.columns(3)
-col1.metric("Total de Ventas", f"${df1['Total_Sales'].sum():,.0f}")
-col2.metric("Productos únicos", df1['Product'].nunique())
-col3.metric("Categorías", df1['Category'].nunique())
+col1.metric("Total Sales", f"${df1['Total_Sales'].sum():,.0f}")
+col2.metric("Unique Products", df1['Product'].nunique())
+col3.metric("Categories", df1['Category'].nunique())
 
+# Top Selling Categories
 
 cat_sales = df1.groupby("Category")["Quantity"].sum().reset_index()
 st.subheader("Top Selling Categories (Interactive)")
-fig = px.bar(cat_sales,
+fig = px.bar(
+cat_sales,
 x="Category",
 y="Quantity",
 color="Quantity",
 hover_data=["Quantity"],
-labels={"Quantity":"Cantidad vendida","Category":"Categoría"},
-title="Ventas por Categoría")
+labels={"Quantity": "Quantity Sold", "Category": "Category"},
+title="Sales by Category"
+)
 st.plotly_chart(fig)
 
+# Sales per Customer
 
 st.subheader("Sales per Customer (Interactive)")
 customer_sales = df1.groupby('Customer_Name')['Total_Sales'].sum().reset_index()
-fig = px.scatter(customer_sales,
+fig = px.scatter(
+customer_sales,
 x="Customer_Name",
 y="Total_Sales",
 size="Total_Sales",
 color="Total_Sales",
 hover_data=["Total_Sales"],
-title="Ventas Totales por Cliente")
+title="Total Sales per Customer"
+)
 fig.update_layout(xaxis_tickangle=-45)
 st.plotly_chart(fig)
 
+# Collaborative Filtering
 
 df1 = df1[['Customer_Name', 'Product', 'Category', 'Brand', 'Quantity', 'Total_Sales']].copy()
 df1.dropna(inplace=True)
 
+# User-User
 
 check_final = df1.pivot_table(index='Customer_Name', columns='Category', values='Quantity')
 check_final = check_final.apply(lambda row: row.fillna(row.mean()), axis=1)
 
-similarity_with_user = pd.DataFrame(cosine_similarity(check_final), index=check_final.index, columns=check_final.index)
+similarity_with_user = pd.DataFrame(
+cosine_similarity(check_final),
+index=check_final.index,
+columns=check_final.index
+)
 
 def find_n_neighbours_user_ids(similarity_with_user, n):
 top_users = similarity_with_user.apply(
@@ -97,33 +109,34 @@ else:
 index = item_ratings.index.values.squeeze().tolist() if len(item_ratings) > 1 else [item_ratings.index[0]]
 corr = similarity_with_user.loc[user, index]
 fin = pd.concat([item_ratings, corr], axis=1)
-fin.columns = ['adg_score','correlation']
+fin.columns = ['adg_score', 'correlation']
 fin['score'] = fin.apply(lambda x: x['adg_score'] * x['correlation'], axis=1)
 final_score = avg_user + fin['score'].sum() / fin['correlation'].sum()
 score.append(final_score)
 data = pd.DataFrame({'Category': check_final.columns, 'Score': score})
 return data.sort_values(by='Score', ascending=False).head(top_n)
 
-st.subheader("Personalized recommendation (User–Item)")
-usuarios = check_final.index.tolist()
-usuario_sel = st.selectbox("Usuario:", usuarios, key="user_select")
-if st.button("Generate recommendation"):
-recomendaciones_user_df = User_item_score1(usuario_sel)
-st.success(f"Top 5 categorías recomendadas para **{usuario_sel}**:")
-for cat in recomendaciones_user_df['Category']:
+st.subheader("Personalized Recommendation (User–Item)")
+users = check_final.index.tolist()
+selected_user = st.selectbox("Select User:", users, key="user_select")
+if st.button("Generate Recommendation"):
+user_recommendations = User_item_score1(selected_user)
+st.success(f"Top 5 recommended categories for **{selected_user}**:")
+for cat in user_recommendations['Category']:
 st.write(f"- {cat}")
 fig = px.bar(
-recomendaciones_user_df,
+user_recommendations,
 x="Category",
 y="Score",
 color="Score",
-labels={"Score":"Predicted Score","Category":"Category"},
-title=f"Top 5 categorías recomendadas para '{usuario_sel}'",
+labels={"Score": "Predicted Score", "Category": "Category"},
+title=f"Top 5 recommended categories for '{selected_user}'",
 color_continuous_scale="Viridis"
 )
 fig.update_traces(textposition='outside')
 st.plotly_chart(fig)
 
+# Item-Item
 
 item_sim = cosine_similarity(check_final.T)
 similarity_with_item = pd.DataFrame(item_sim, index=check_final.columns, columns=check_final.columns)
@@ -151,7 +164,7 @@ else:
 corr = similarity_with_item.loc[item_actual, neighbors]
 adg_score = pd.Series(1, index=neighbors)
 fin = pd.concat([adg_score, corr], axis=1)
-fin.columns = ['adg_score','correlation']
+fin.columns = ['adg_score', 'correlation']
 fin['score'] = fin['adg_score'] * fin['correlation']
 final_score = fin['score'].sum() / fin['correlation'].sum()
 score.append(final_score)
@@ -161,20 +174,20 @@ return top_items['Category'].tolist()
 
 st.subheader("Item-Based Recommendation (Item-Item)")
 items = sorted(check_final.columns.tolist())
-item_sel = st.selectbox("Select a category:", items, key="item_select")
-if st.button("Show similar items"):
-recomendaciones_items = Item_item_score1(top_n=5)
-st.success(f"Top 5 categories similar to **{item_sel}**:")
-for cat in recomendaciones_items:
+selected_item = st.selectbox("Select a Category:", items, key="item_select")
+if st.button("Show Similar Items"):
+item_recommendations = Item_item_score1(top_n=5)
+st.success(f"Top 5 categories similar to **{selected_item}**:")
+for cat in item_recommendations:
 st.write(f"- {cat}")
 
+# Market Basket Products
 
 df2 = pd.read_csv("products.csv")
-
-# df2.head()  
-
 df_sample = df2.sample(n=3000, random_state=42)
-df_sample['Products'] = df_sample['Products'].apply(lambda x: [p.strip() for p in x.split(',')] if isinstance(x, str) else [])
+df_sample['Products'] = df_sample['Products'].apply(
+lambda x: [p.strip() for p in x.split(',')] if isinstance(x, str) else []
+)
 all_products = [p for sublist in df_sample['Products'] for p in sublist if p]
 product_counts = Counter(all_products)
 df_products = pd.DataFrame(product_counts.items(), columns=['Product', 'Count'])
@@ -215,4 +228,3 @@ st.markdown(
 "Each bar shows how many times each product was sold. Darker colors indicate higher sales.",
 unsafe_allow_html=True
 )
-
