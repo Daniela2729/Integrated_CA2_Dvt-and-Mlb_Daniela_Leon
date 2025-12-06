@@ -530,6 +530,22 @@ if st.button("Show similar items"):
     except Exception as e:
         st.error(f"The item-item recommendation could not be generated: {e}")
 
+        fig = px.bar(
+            rec_items_df, 
+            x="Categoría", 
+            y="Score", 
+            text="Categoría",
+            color="Score",
+            labels={"Score": "Similaridad", "Categoría": "Categoría"},
+            title=f"Top 5 categorías similares a '{item_sel}'",
+            color_continuous_scale="Viridis"
+        )
+        fig.update_traces(textposition='outside')
+        st.plotly_chart(fig)
+
+    except Exception as e:
+        st.error(f"No se pudo generar la recomendación item–item: {e}")
+
 
 # Part 2
 
