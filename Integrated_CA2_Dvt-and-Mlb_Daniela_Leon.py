@@ -511,40 +511,44 @@ metrics_df = pd.DataFrame(metrics, index=[0])
 print(metrics_df)
 
 st.subheader("Item-Based Recommendation (Item-Item)")
+st.write("Relationship with other items.")
 
-st.write("""relationship with other items.""")
 
 items = sorted(check_final.columns.tolist())
-
 item_sel = st.selectbox("Select a category:", items, key="item_select")
 
 if st.button("Show similar items"):
     try:
+        
         recommendations_items = Item_item_score1(top_n=5)
         st.success(f"Top 5 categories similar to **{item_sel}**:")
-        st.write(recommendations_items)
 
-        rec_items_df = pd.DataFrame({"Recommended category": recommendations_items})
-        st.dataframe(rec_items_df)
+        
+        for cat in recommendations_items:
+            st.write(f"- {cat}")
 
-    except Exception as e:
-        st.error(f"The item-item recommendation could not be generated: {e}")
+       
+        rec_items_df = pd.DataFrame({
+            "Category": recommendations_items,
+            "Score": range(len(recommendations_items), 0, -1)  # 5,4,3...
+        })
 
+        
         fig = px.bar(
             rec_items_df, 
-            x="Categoría", 
+            x="Category", 
             y="Score", 
-            text="Categoría",
+            text="Category",
             color="Score",
-            labels={"Score": "Similaridad", "Categoría": "Categoría"},
-            title=f"Top 5 categorías similares a '{item_sel}'",
+            labels={"Score": "Similarity", "Category": "Category"},
+            title=f"Top 5 categories similar to '{item_sel}'",
             color_continuous_scale="Viridis"
         )
         fig.update_traces(textposition='outside')
         st.plotly_chart(fig)
 
     except Exception as e:
-        st.error(f"No se pudo generar la recomendación item–item: {e}")
+        st.error(f"The item-item recommendation could not be generated: {e}")
 
 
 # Part 2
