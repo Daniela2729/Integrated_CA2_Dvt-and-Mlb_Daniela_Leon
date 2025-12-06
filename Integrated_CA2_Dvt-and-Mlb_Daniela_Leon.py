@@ -517,27 +517,28 @@ st.write("Relationship with other items.")
 items = sorted(check_final.columns.tolist())
 item_sel = st.selectbox("Select a category:", items, key="item_select")
 
+
 if st.button("Show similar items"):
     try:
-        
-        recommendations_items = Item_item_score1(top_n=5)
+
+        recomendaciones_items = Item_item_score1(top_n=5) 
+
         st.success(f"Top 5 categories similar to **{item_sel}**:")
 
-        
-        for cat in recommendations_items:
+
+        for cat in recomendaciones_items:
             st.write(f"- {cat}")
 
-       
+
         rec_items_df = pd.DataFrame({
-            "Category": recommendations_items,
-            "Score": range(len(recommendations_items), 0, -1)  # 5,4,3...
+            "Category": recomendaciones_items,
+            "Score": range(len(recomendaciones_items), 0, -1)
         })
 
-        
         fig = px.bar(
-            rec_items_df, 
-            x="Category", 
-            y="Score", 
+            rec_items_df,
+            x="Category",
+            y="Score",
             text="Category",
             color="Score",
             labels={"Score": "Similarity", "Category": "Category"},
@@ -549,8 +550,6 @@ if st.button("Show similar items"):
 
     except Exception as e:
         st.error(f"The item-item recommendation could not be generated: {e}")
-
-
 # Part 2
 
 # In[168]:
