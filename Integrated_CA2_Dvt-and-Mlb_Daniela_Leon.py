@@ -11,7 +11,8 @@ import warnings
 warnings.filterwarnings('ignore')
 plt.style.use("default")
 
-st.title("Integrated-ca2-dvt-and-mlb")
+st.markdown("<h2 style='text-align: left; color: black;'>Integrated-ca2-dvt-and-mlb</h2>", unsafe_allow_html=True)
+
 st.title("E-Commerce Dashboard")
 st.write(
 """This dashboard displays the most important business information clearly and simply.
@@ -19,6 +20,8 @@ It is designed so that anyone can easily understand sales, products, and custome
 )
 
 # Load data
+
+st.title("Collaborative filtering")
 
 df1 = pd.read_csv("Online-eCommerce.csv")
 
@@ -190,6 +193,8 @@ df_sample = df2.sample(n=3000, random_state=42)
 df_sample['Products'] = df_sample['Products'].apply(
 lambda x: [p.strip() for p in x.split(',')] if isinstance(x, str) else []
 )
+
+st.title("Market Basket")
 
 all_products = [p for sublist in df_sample['Products'] for p in sublist if p]
 
