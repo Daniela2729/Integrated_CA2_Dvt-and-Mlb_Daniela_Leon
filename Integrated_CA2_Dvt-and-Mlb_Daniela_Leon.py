@@ -888,4 +888,48 @@ print(rules_fp.sort_values(by='lift', ascending=False).head(5)[['antecedents','c
 
 
 
+st.set_page_config(page_title="Market Basket", layout="wide")
+
+st.markdown("<h1 style='font-size:36px; color:navy;'>Product Dashboard</h1>", unsafe_allow_html=True)
+st.markdown("<p style='font-size:20px;'>Information panel.</p>", unsafe_allow_html=True)
+
+
+col1, col2, col3 = st.columns(3)
+col1.metric("Transactions", len(df2), delta=None)
+col2.metric("Unique clients", df2['CustomerID'].nunique())
+col3.metric("Unique products", df2['Products'].nunique())
+
+
+product_counts = pd.Series([p for sublist in df2['Products'] for p in sublist]).value_counts().head(10)
+df_products = pd.DataFrame({'Product': product_counts.index, 'Cantidad': product_counts.values})
+
+
+fig = px.bar(
+    df_products,
+    x='Product',
+    y='Amount',
+    text='Amount',
+    color='Amount',
+    color_continuous_scale='Viridis',
+    title="Top 10 Best Selling Products",
+    hover_data={'Producto': True, 'Cantidad': True}
+)
+
+
+fig.update_layout(
+    font=dict(size=18), 
+    title_font_size=24,
+    xaxis_tickangle=-45,
+    xaxis_title="Product",
+    yaxis_title="Quantity Sold",
+    plot_bgcolor='white',
+    paper_bgcolor='white'
+)
+fig.update_traces(textposition='outside')
+
+st.plotly_chart(fig, use_container_width=True)
+
+st.markdown("<p style='font-size:18px;'>Hover your mouse over each bar to see details. The colors indicate the quantity sold.</p>", unsafe_allow_html=True)
+
+
 
