@@ -900,8 +900,12 @@ col2.metric("Unique clients", df2['CustomerID'].nunique())
 col3.metric("Unique products", df2['Products'].nunique())
 
 
-df_products = product_counts.reset_index()
-df_products.columns = ['Product', 'Count']  
+df2['Products'] = df2['Products'].apply(lambda x: [p.strip() for p in x] if isinstance(x, list) else [])
+
+all_products = [p for sublist in df2['Products'] for p in sublist if p]  # Remove empty strings
+top_products_count = Counter(all_products).most_common(10)
+
+df_products = pd.DataFrame(top_products_count, columns=['Product', 'Count'])
 
 fig = px.bar(
     df_products,
