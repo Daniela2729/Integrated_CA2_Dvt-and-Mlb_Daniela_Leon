@@ -251,17 +251,64 @@ def User_item_score1(user):
 st.subheader("Personalized recommendation (User–Item)")
 st.write("Select a user to view recommended categories.")
 
+# Lista de usuarios
 usuarios = check_final.index.tolist()
 usuario_sel = st.selectbox("Usuario:", usuarios)
 
 if st.button("Generate recommendation"):
     try:
-        recommendations = User_item_score1(usuario_sel)
+        # Generar recomendaciones
+        recommendations_df = User_item_score_selected(usuario_sel, top_n=5)  # nueva función que devuelve DataFrame
+
+        # Mostrar lista de categorías
         st.write("Recommended categories:")
-        for cat in recommendations:
+        for cat in recommendations_df['Category']:
             st.write(f"- {cat}")
-    except:
-        st.error("The recommendation could not be generated for this user.")
+
+        # Crear gráfico interactivo
+        fig = px.bar(
+            recommendations_df,
+            x="Category",
+            y="Score",
+            text="Category",
+            color="Score",
+            labels={"Score": "Predicted Score", "Category": "Category"},
+            title=f"Top 5 recommended categories for '{usuario_sel}'",
+            color_continuous_scale="Viridis"
+        )
+        fig.update_traces(textposition='outside')
+        st.plotly_chart(fig)
+
+    except Exception as e:
+        st.error(f"The recommendation could not be generated for this user: {e}")
+
+# -----------------------------------------
+# Función que devuelve recomendaciones como DataFrame
+def User_item_score_selected(user, top_n=5):
+    score = []
+    for item in check_final.columns:
+        a = sim_user_30_u.loc[user].values
+        neighbors = a.squeeze().tolist()
+        item_ratings = check_final.loc[neighbors, item]
+        item_ratings = item_ratings[item_ratings.notnull()]
+
+        avg_user = check_final.loc[user].mean()
+
+        if len(item_ratings) == 0:
+            final_score = avg_user
+        else:
+            index = item_ratings.index.values.squeeze().tolist() if len(item_ratings) > 1 else [item_ratings.index[0]]
+            corr = similarity_with_user.loc[user, index]
+            fin = pd.concat([item_ratings, corr], axis=1)
+            fin.columns = ['adg_score','correlation']
+            fin['score'] = fin.apply(lambda x: x['adg_score'] * x['correlation'], axis=1)
+            final_score = avg_user + fin['score'].sum() / fin['correlation'].sum()
+
+        score.append(final_score)
+
+    data = pd.DataFrame({'Category': check_final.columns, 'Score': score})
+    top_recommendations = data.sort_values(by='Score', ascending=False).head(top_n)
+    return top_recommendations
 
 # In[27]:
 
