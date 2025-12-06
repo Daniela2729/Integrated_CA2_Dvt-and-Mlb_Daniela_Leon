@@ -11,18 +11,15 @@ from sklearn.metrics.pairwise import cosine_similarity
 import warnings
 warnings.filterwarnings('ignore')
 
-Configuración general
 
 st.set_page_config(page_title="Market Basket", layout="wide")
 st.title("Integrated e-Commerce Dashboard")
 st.markdown("This dashboard shows the main business insights in a simple, user-friendly interface.", unsafe_allow_html=True)
 
-Cargar datasets
 
 df1 = pd.read_csv("Online-eCommerce.csv")
 df2 = pd.read_csv("products.csv")
 
-Limpieza y tipado
 
 df1['Product'] = df1['Product'].astype(str).str.strip().str.lower()
 df1['Category'] = df1['Category'].astype(str).str.strip().str.lower()
@@ -32,14 +29,12 @@ df1['Customer_Name'] = df1['Customer_Name'].astype(str).str.strip()
 df1 = df1[['Customer_Name', 'Product', 'Category', 'Brand', 'Quantity', 'Total_Sales']].copy()
 df1.dropna(inplace=True)
 
-Métricas principales
 
 col1, col2, col3 = st.columns(3)
 col1.metric("Total de Ventas", f"${df1['Total_Sales'].sum():,.0f}")
 col2.metric("Productos únicos", df1['Product'].nunique())
 col3.metric("Categorías", df1['Category'].nunique())
 
-Ventas por categoría (gráfico)
 
 cat_sales = df1.groupby("Category")["Quantity"].sum().reset_index()
 st.subheader("Top Selling Categories (Interactive)")
@@ -52,7 +47,6 @@ labels={"Quantity":"Cantidad vendida","Category":"Categoría"},
 title="Ventas por Categoría")
 st.plotly_chart(fig, use_container_width=True)
 
-Ventas por cliente (gráfico)
 
 st.subheader("Sales per Customer (Interactive)")
 customer_sales = df1.groupby('Customer_Name')['Total_Sales'].sum().reset_index()
@@ -66,12 +60,10 @@ title="Ventas Totales por Cliente")
 fig.update_layout(xaxis_tickangle=-45)
 st.plotly_chart(fig, use_container_width=True)
 
-Preparar datos para recomendaciones
 
 check_final = df1.pivot_table(index='Customer_Name', columns='Category', values='Quantity')
 check_final = check_final.apply(lambda row: row.fillna(row.mean()), axis=1)
 
-Similaridad usuario-usuario
 
 similarity_with_user = pd.DataFrame(cosine_similarity(check_final), index=check_final.index, columns=check_final.index)
 
@@ -108,7 +100,6 @@ score.append(final_score)
 data = pd.DataFrame({'Category': check_final.columns, 'Score': score})
 return data.sort_values(by='Score', ascending=False).head(top_n)
 
-Recomendaciones personalizadas
 
 st.subheader("Personalized recommendation (User–Item)")
 usuarios = check_final.index.tolist()
@@ -131,7 +122,6 @@ color_continuous_scale="Viridis"
 fig.update_traces(textposition='outside')
 st.plotly_chart(fig)
 
-Dashboard de productos top
 
 st.subheader("Top Products Dashboard")
 df_sample = df2.sample(n=3000, random_state=42)
