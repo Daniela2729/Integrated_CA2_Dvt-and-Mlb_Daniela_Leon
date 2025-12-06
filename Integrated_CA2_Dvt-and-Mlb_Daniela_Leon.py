@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
 import time
+import plotly.express as px
 
 from sklearn.metrics import mean_squared_error, mean_absolute_error
 from sklearn.metrics.pairwise import cosine_similarity
@@ -55,17 +56,32 @@ col3.metric("Categorías", df1['Category'].nunique())
 
 cat_sales = df1.groupby("Category")["Quantity"].sum().reset_index()
 
-fig1, ax1 = plt.subplots()
-ax1.bar(cat_sales["Category"], cat_sales["Quantity"])
-plt.xticks(rotation=45)
-plt.xlabel("Categoría")
-plt.ylabel("Cantidad Vendida")
-plt.tight_layout()
-
-st.pyplot(fig1)
 
 
+st.subheader("Top Selling Categories (Interactive)")
 
+fig = px.bar(cat_sales, 
+             x="Category", 
+             y="Quantity", 
+             color="Quantity",
+             hover_data=["Quantity"],
+             labels={"Quantity":"Cantidad vendida","Category":"Categoría"},
+             title="Ventas por Categoría")
+st.plotly_chart(fig)
+
+
+st.subheader("Sales per Customer (Interactive)")
+
+customer_sales = df1.groupby('Customer_Name')['Total_Sales'].sum().reset_index()
+fig = px.scatter(customer_sales, 
+                 x="Customer_Name", 
+                 y="Total_Sales",
+                 size="Total_Sales",
+                 color="Total_Sales",
+                 hover_data=["Total_Sales"],
+                 title="Ventas Totales por Cliente")
+fig.update_layout(xaxis_tickangle=-45)
+st.plotly_chart(fig)
 
 
 df1 = df1[['Customer_Name', 'Product', 'Category', 'Brand', 'Quantity', 'Total_Sales']].copy()
@@ -231,6 +247,15 @@ def User_item_score1(user):
     top_5_recommendation = data.sort_values(by='score', ascending=False).head(5)
     top_categories = top_5_recommendation['Category'].tolist()
     return top_categories
+
+st.subheader("User-User Similarity Heatmap (Interactive)")
+
+fig = px.imshow(similarity_with_user.values,
+                labels=dict(x="Usuario", y="Usuario", color="Similitud"),
+                x=similarity_with_user.columns,
+                y=similarity_with_user.index,
+                color_continuous_scale="Viridis")
+st.plotly_chart(fig)
 
 st.subheader("Personalized recommendation (User–Item)")
 st.write("Select a user to view recommended categories.")
