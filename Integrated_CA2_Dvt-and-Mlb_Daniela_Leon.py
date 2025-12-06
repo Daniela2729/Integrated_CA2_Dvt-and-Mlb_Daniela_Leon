@@ -353,21 +353,6 @@ print("Top 5 recommended items (item-item):", top_recommendations_items)
 
 
 
-st.subheader("Personalized recommendation (User–Item)")
-
-st.write("Select a user to view recommended categories.")
-
-usuarios = check_final.index.tolist()
-usuario_sel = st.selectbox("Usuario:", usuarios)
-
-if st.button("Generate recommendation"):
-    try:
-        recommendations = User_item_score1(usuario_sel)
-        st.write("Recommended categories:")
-        st.write(recommendations)
-    except:
-        st.error("The recommendation could not be generated for this user.")
-
 # Model evaluation
 
 # In[38]:
@@ -498,6 +483,26 @@ metrics = {
 }
 metrics_df = pd.DataFrame(metrics, index=[0])
 print(metrics_df)
+
+st.subheader("Item-Based Recommendation (Item-Item)")
+
+st.write("""relationship with other items.""")
+
+items = sorted(check_final.columns.tolist())
+
+item_sel = st.selectbox("Select a category:", items, key="item_select")
+
+if st.button("Show similar items"):
+    try:
+        recommendations_items = Item_item_score1(top_n=5)
+        st.success(f"Top 5 categories similar to **{item_sel}**:")
+        st.write(recommendations_items)
+
+        rec_items_df = pd.DataFrame({"Recommended category": recommendations_items})
+        st.dataframe(rec_items_df)
+
+    except Exception as e:
+        st.error(f"The item-item recommendation could not be generated: {e}")
 
 
 # Part 2
