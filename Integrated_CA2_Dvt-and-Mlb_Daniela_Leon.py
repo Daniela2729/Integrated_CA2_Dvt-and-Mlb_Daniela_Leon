@@ -1,5 +1,4 @@
 
-st.title("Integrated-ca2-dvt-and-mlb")
 
 import streamlit as st
 import pandas as pd
@@ -18,6 +17,9 @@ import warnings
 warnings.filterwarnings('ignore')
 
 plt.style.use("default")
+
+st.title("Integrated-ca2-dvt-and-mlb")
+
 
 st.title("e-Commerce Dashboard")
 st.write("""This dashboard displays the most important business information clearly and simply.
