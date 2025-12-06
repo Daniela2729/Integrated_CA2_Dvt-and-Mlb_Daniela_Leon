@@ -513,44 +513,54 @@ print(metrics_df)
 st.subheader("Item-Based Recommendation (Item-Item)")
 st.write("Relationship with other items.")
 
-
+# Lista de categorías disponibles
 items = sorted(check_final.columns.tolist())
 item_sel = st.selectbox("Select a category:", items, key="item_select")
 
+def Item_item_score_selected(item_actual, top_n=5):
+    # Tomamos los vecinos de la categoría seleccionada
+    neighbors = sim_items_12_u.loc[item_actual].dropna().values.squeeze().tolist()
+    
+    if len(neighbors) == 0:
+        return []
+    
+    corr = similarity_with_item.loc[item_actual, neighbors]
+    scores = pd.DataFrame({
+        "Category": neighbors,
+        "Score": corr.values
+    })
+    
+    top_items = scores.sort_values(by="Score", ascending=False).head(top_n)
+    return top_items
 
 if st.button("Show similar items"):
     try:
+        recomendaciones_items_df = Item_item_score_selected(item_sel, top_n=5)
+        if recomendaciones_items_df.empty:
+            st.warning("No similar items found for this category.")
+        else:
+            st.success(f"Top 5 categories similar to **{item_sel}**:")
 
-        recomendaciones_items = Item_item_score1(top_n=5) 
+            # Mostrar lista simple
+            for cat in recomendaciones_items_df['Category']:
+                st.write(f"- {cat}")
 
-        st.success(f"Top 5 categories similar to **{item_sel}**:")
-
-
-        for cat in recomendaciones_items:
-            st.write(f"- {cat}")
-
-
-        rec_items_df = pd.DataFrame({
-            "Category": recomendaciones_items,
-            "Score": range(len(recomendaciones_items), 0, -1)
-        })
-
-        fig = px.bar(
-            rec_items_df,
-            x="Category",
-            y="Score",
-            text="Category",
-            color="Score",
-            labels={"Score": "Similarity", "Category": "Category"},
-            title=f"Top 5 categories similar to '{item_sel}'",
-            color_continuous_scale="Viridis"
-        )
-        fig.update_traces(textposition='outside')
-        st.plotly_chart(fig)
+            # Gráfico interactivo
+            fig = px.bar(
+                recomendaciones_items_df,
+                x="Category",
+                y="Score",
+                text="Category",
+                color="Score",
+                labels={"Score": "Similarity", "Category": "Category"},
+                title=f"Top 5 categories similar to '{item_sel}'",
+                color_continuous_scale="Viridis"
+            )
+            fig.update_traces(textposition='outside')
+            st.plotly_chart(fig)
 
     except Exception as e:
-        st.error(f"The item-item recommendation could not be generated: {e}")
-# Part 2
+        st.error(f"The item-item recommendation could not be generated: {e}")# Part 2
 
 # In[168]:
 
